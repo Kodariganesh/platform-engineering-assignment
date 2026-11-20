@@ -95,7 +95,13 @@ sudo journalctl -u platform-app.service -n 25 --no-pager
 sudo journalctl -u platform-health.service -n 25 --no-pager
 ```
 
-For submission, record the public `200 OK`, the post-reboot `200 OK`, and the health-recovery log. These cloud checks are pending.
+**Verified on EC2 on November 20, 2026.** The [GitHub Actions deployment](https://github.com/Kodariganesh/platform-engineering-assignment/actions/runs/44679407650) passed its public health check. AWS CloudTrail recorded a stop at 10:48:13 IST and a start at 10:58:56 IST. A public request to the restarted instance returned `HTTP/1.1 200 OK` at 11:47:29 IST.
+
+- **Reboot.** The Linux boot ID changed after an EC2 reboot. The public `/health` endpoint returned HTTP `200` and `OK` after boot.
+- **Process crash.** After sending `SIGKILL` to Uvicorn, systemd logged `Main process exited, code=killed, status=9/KILL` and `Scheduled restart job, restart counter is at 1.` The process ID changed and the public health check passed.
+- **Failed HTTP probe.** After stopping the app service, the timer logged `Health check failed for http://127.0.0.1:8080/health (HTTP 000). Restarting platform-app.service.` The public health check passed after the timer restarted the app.
+
+The live tests used EC2 Instance Connect with a temporary SSH rule limited to one IPv4 address. The rule was removed after the tests.
 
 ## Ubuntu VM fallback
 
@@ -120,7 +126,7 @@ Local validation completed for the route tests, Bash syntax, and Terraform forma
 Success! The configuration is valid.
 ```
 
-The first hosted [GitHub Actions validation run](https://github.com/Kodariganesh/platform-engineering-assignment/actions/runs/44675964951) passed.
+The hosted [GitHub Actions validation run](https://github.com/Kodariganesh/platform-engineering-assignment/actions/runs/44676559249) passed.
 
 ## Outage checks
 
@@ -131,6 +137,34 @@ The first hosted [GitHub Actions validation run](https://github.com/Kodariganesh
 
 ## Cleanup and limitations
 
-Use the same Terraform directory and local state to remove the AWS resources. From the repository root, run `terraform -chdir=terraform destroy` and review the proposed deletions before confirming. For the fallback, remove the disposable Ubuntu VM after capturing any evidence you need.
+For a **laptop deployment**, use the original Terraform directory and its local state. Run `terraform -chdir=terraform destroy` and review the proposed deletions before confirming.
+
+For a **GitHub Actions deployment**, use the S3 backend that owns the deployment. From PowerShell, use a fresh clone and an AWS CLI profile with access to the state bucket and EC2 resources. Replace the two placeholders with the matching GitHub `production` environment variables.
+
+```powershell
+$env:AWS_PROFILE = "platform-assignment"
+$env:TF_VAR_aws_region = "ap-southeast-2"
+$env:TF_VAR_subnet_id = "<TF_SUBNET_ID>"
+$bucket = "<TF_STATE_BUCKET>"
+$cleanupDir = Join-Path $env:TEMP ("platform-cleanup-" + [guid]::NewGuid().ToString("N"))
+git clone https://github.com/Kodariganesh/platform-engineering-assignment.git $cleanupDir
+Set-Location -LiteralPath $cleanupDir
+@"
+terraform {
+  backend "s3" {}
+}
+"@ | Set-Content -LiteralPath terraform/github-backend.tf -Encoding ascii
+$backend = @(
+  "-backend-config=bucket=$bucket"
+  "-backend-config=key=platform-assignment/production.tfstate"
+  "-backend-config=region=$env:TF_VAR_aws_region"
+  "-backend-config=encrypt=true"
+  "-backend-config=use_lockfile=true"
+)
+terraform -chdir=terraform init -input=false -lockfile=readonly @backend
+terraform -chdir=terraform plan -destroy -out=cleanup.tfplan
+```
+
+Review the saved plan. When it lists only the intended deployment resources for deletion, run `terraform -chdir=terraform apply cleanup.tfplan`. The S3 bucket was created separately and holds the state for future deployments. For the local fallback, remove the disposable Ubuntu VM after saving the evidence.
 
 The demo uses plain HTTP and one EC2 instance. A reboot causes a brief outage. Terraform replaces the instance when its embedded first-boot files change, so an update can cause downtime and change the public URL.
