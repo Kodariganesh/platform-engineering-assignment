@@ -1,0 +1,7 @@
+[Unit]
+Description=Check the Platform Engineering FastAPI Service
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/opt/platform-app/scripts/health-check.sh

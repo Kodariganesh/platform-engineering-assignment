@@ -1,0 +1,11 @@
+[Unit]
+Description=Schedule the Platform Engineering FastAPI Health Check
+
+[Timer]
+OnActiveSec=1min
+OnUnitInactiveSec=1min
+AccuracySec=1s
+Unit=platform-health.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,19 @@
+[Unit]
+Description=Platform Engineering FastAPI Service
+After=network.target
+
+[Service]
+Type=exec
+User=platform-app
+Group=platform-app
+WorkingDirectory=/opt/platform-app
+ExecStart=/opt/platform-app/.venv/bin/python -B -m uvicorn app.server:app --host 0.0.0.0 --port 8080
+Restart=on-failure
+RestartSec=2s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
