@@ -120,7 +120,7 @@ Local validation completed for the route tests, Bash syntax, and Terraform forma
 Success! The configuration is valid.
 ```
 
-The hosted GitHub Actions run is pending. Add its URL after the workflow runs in the public repository.
+The first hosted [GitHub Actions validation run](https://github.com/Kodariganesh/platform-engineering-assignment/actions/runs/44675964951) passed.
 
 ## Outage checks
 
