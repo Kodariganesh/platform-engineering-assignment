@@ -162,9 +162,9 @@ $backend = @(
   "-backend-config=use_lockfile=true"
 )
 terraform -chdir=terraform init -input=false -lockfile=readonly @backend
-terraform -chdir=terraform plan -destroy -out=cleanup.tfplan
+terraform '-chdir=terraform' plan -destroy '-out=cleanup.tfplan'
 ```
 
-Review the saved plan. When it lists only the intended deployment resources for deletion, run `terraform -chdir=terraform apply cleanup.tfplan`. The S3 bucket was created separately and holds the state for future deployments. For the local fallback, remove the disposable Ubuntu VM after saving the evidence.
+Review the saved plan. When it lists only the intended deployment resources for deletion, run `terraform '-chdir=terraform' apply 'cleanup.tfplan'`. The S3 bucket was created separately and holds the state for future deployments. For the local fallback, remove the disposable Ubuntu VM after saving the evidence.
 
 The demo uses plain HTTP and one EC2 instance. A reboot causes a brief outage. Terraform replaces the instance when its embedded first-boot files change, so an update can cause downtime and change the public URL.
